@@ -1,17 +1,26 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SolarRecord {
     #[serde(rename = "Updated Time", with = "date_format")]
     time: DateTime<Utc>,
-    #[serde(rename = "Production Power(W)", deserialize_with = "deserialize_decimal_u32")]
+    #[serde(
+        rename = "Production Power(W)",
+        deserialize_with = "deserialize_decimal_u32"
+    )]
     production: u32,
-    #[serde(rename = "Consumption Power(W)", deserialize_with = "deserialize_decimal_u32")]
+    #[serde(
+        rename = "Consumption Power(W)",
+        deserialize_with = "deserialize_decimal_u32"
+    )]
     consumption: u32,
     #[serde(rename = "Grid Power(W)", deserialize_with = "deserialize_decimal_i32")]
     grid: i32,
-    #[serde(rename = "Battery Power(W)", deserialize_with = "deserialize_decimal_i32")]
+    #[serde(
+        rename = "Battery Power(W)",
+        deserialize_with = "deserialize_decimal_i32"
+    )]
     battery: i32,
     #[serde(rename = "SoC(%)", deserialize_with = "deserialize_decimal_u8")]
     soc: u8,
