@@ -69,7 +69,7 @@ impl SolarData {
     }
 
     pub fn mean_savings(&self) -> f32 {
-        self.savings() / self.records.len() as f32
+        self.savings() / self.aggregate().len() as f32
     }
 
     pub fn remaining_setup_cost(&self) -> f32 {
@@ -149,6 +149,14 @@ impl Display for SolarData {
 
         let table = builder.build().with(Style::rounded()).to_string();
 
-        write!(f, "{}", table)
+        let output = format!(
+            "{}\n{}\n{}\n{}\n",
+            table,
+            self.mean_savings(),
+            self.remaining_setup_cost(),
+            self.payoff_date().to_rfc2822()
+        );
+
+        write!(f, "{}", output)
     }
 }
