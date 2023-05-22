@@ -1,17 +1,13 @@
-use chrono::{DateTime, Duration, NaiveDate, NaiveTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 
 use crate::{rate::Rate, solarman_record::SolarManRecord};
 
 pub struct SolarRecord {
-    date: NaiveDate,
-    time: NaiveTime,
     pub date_time: DateTime<Utc>,
     duration: Duration,
     production: u32,
     consumption: u32,
     grid: i32,
-    battery: i32,
-    soc: u8,
 }
 
 impl SolarRecord {
@@ -22,15 +18,11 @@ impl SolarRecord {
         };
 
         Self {
-            time: record.time.time(),
-            date: record.time.date_naive(),
             date_time: record.time,
             duration,
             production: record.production,
             consumption: record.consumption,
             grid: record.grid,
-            battery: record.battery,
-            soc: record.soc,
         }
     }
 }
@@ -48,6 +40,10 @@ impl SolarRecord {
         self.date_time.into()
     }
 
+    pub fn savings(&self) -> f32 {
+        self.old_cost() - self.cost()
+    }
+
     pub fn cost(&self) -> f32 {
         self.rate().cost(-self.grid) * (self.duration.num_minutes() as f32 / 60.0)
     }
@@ -56,15 +52,27 @@ impl SolarRecord {
         self.old_rate().cost(self.consumption as i32) * (self.duration.num_minutes() as f32 / 60.0)
     }
 
-    pub fn savings(&self) -> f32 {
-        self.old_cost() - self.cost()
-    }
-
     pub fn production(&self) -> f32 {
         self.production as f32 * (self.duration.num_minutes() as f32 / 60.0)
     }
 
     pub fn consumption(&self) -> f32 {
         self.consumption as f32 * (self.duration.num_minutes() as f32 / 60.0)
+    }
+
+    pub fn purchased(&self) -> f32 {
+        if self.grid < 0 {
+            self.grid.abs() as f32 * (self.duration.num_minutes() as f32 / 60.0)
+        } else {
+            0.0
+        }
+    }
+
+    pub fn feed_in(&self) -> f32 {
+        if self.grid > 0 {
+            self.grid as f32 * (self.duration.num_minutes() as f32 / 60.0)
+        } else {
+            0.0
+        }
     }
 }

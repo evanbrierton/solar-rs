@@ -49,7 +49,7 @@ impl SolarData {
     }
 
     pub fn savings(&self) -> f32 {
-        self.old_cost() - self.cost()
+        self.records.iter().map(|r| r.savings()).sum()
     }
 
     pub fn production(&self) -> f32 {
@@ -59,6 +59,15 @@ impl SolarData {
     pub fn consumption(&self) -> f32 {
         self.records.iter().map(|r| r.consumption()).sum()
     }
+
+    pub fn purchased(&self) -> f32 {
+        self.records.iter().map(|r| r.purchased()).sum()
+    }
+
+    pub fn feed_in(&self) -> f32 {
+        self.records.iter().map(|r| r.feed_in()).sum()
+    }
+
     pub fn mean_savings(&self) -> f32 {
         self.savings() / self.records.len() as f32
     }
@@ -114,6 +123,8 @@ impl Display for SolarData {
             "Savings",
             "Production",
             "Consumption",
+            "Purchased",
+            "Feed In",
         ];
 
         let mut builder = Builder::default();
@@ -122,6 +133,19 @@ impl Display for SolarData {
         for record in self.aggregate() {
             builder.push_record(record.to_table_row());
         }
+
+        let total = vec![
+            "Total".to_string(),
+            format!("€{:.2}", self.old_cost()),
+            format!("€{:.2}", self.cost()),
+            format!("€{:.2}", self.savings()),
+            format!("{:.2}kWh", self.production() / 1000.0),
+            format!("{:.2}kWh", self.consumption() / 1000.0),
+            format!("{:.2}kWh", self.purchased() / 1000.0),
+            format!("{:.2}kWh", self.feed_in() / 1000.0),
+        ];
+
+        builder.push_record(total);
 
         let table = builder.build().with(Style::rounded()).to_string();
 

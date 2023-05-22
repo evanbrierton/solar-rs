@@ -9,6 +9,8 @@ pub struct AggregateSolarRecord {
     savings: f32,
     production: f32,
     consumption: f32,
+    purchased: f32,
+    feed_in: f32,
 }
 
 impl AggregateSolarRecord {
@@ -19,6 +21,8 @@ impl AggregateSolarRecord {
         let savings = records.iter().map(|r| r.savings()).sum();
         let production = records.iter().map(|r| r.production()).sum();
         let consumption = records.iter().map(|r| r.consumption()).sum();
+        let purchased = records.iter().map(|r| r.purchased()).sum();
+        let feed_in = records.iter().map(|r| r.feed_in()).sum();
 
         Self {
             date,
@@ -27,6 +31,8 @@ impl AggregateSolarRecord {
             savings,
             production,
             consumption,
+            purchased,
+            feed_in,
         }
     }
 
@@ -38,6 +44,8 @@ impl AggregateSolarRecord {
             format!("€{:.2}", self.savings),
             format!("{:.2}kWh", self.production / 1000.0),
             format!("{:.2}kWh", self.consumption / 1000.0),
+            format!("{:.2}kWh", self.purchased / 1000.0),
+            format!("{:.2}kWh", self.feed_in / 1000.0),
         ]
     }
 }
