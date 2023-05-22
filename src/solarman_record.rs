@@ -10,7 +10,7 @@ pub struct SolarManRecord {
         rename = "Production Power(W)",
         deserialize_with = "deserialize_decimal"
     )]
-    pub production: u32,
+    pub production: u16,
     #[serde(
         rename = "Consumption Power(W)",
         deserialize_with = "deserialize_decimal"
@@ -38,7 +38,7 @@ where
     Ok(i)
 }
 
-pub fn deserialize_date<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+fn deserialize_date<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
 where
     D: Deserializer<'de>,
 {

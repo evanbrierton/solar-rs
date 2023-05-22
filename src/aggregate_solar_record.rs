@@ -14,7 +14,8 @@ pub struct AggregateSolarRecord {
 }
 
 impl AggregateSolarRecord {
-    pub fn new(records: Vec<&SolarRecord>) -> Self {
+    #[must_use]
+    pub fn new(records: &[&SolarRecord]) -> Self {
         let date = records[0].date_time.date_naive();
         let old = records.iter().map(|r| r.old_cost()).sum();
         let new = records.iter().map(|r| r.cost()).sum();
@@ -36,6 +37,7 @@ impl AggregateSolarRecord {
         }
     }
 
+    #[must_use]
     pub fn to_table_row(&self) -> Vec<String> {
         vec![
             self.date.to_string(),

@@ -20,6 +20,7 @@ pub struct SolarData {
 }
 
 impl SolarData {
+    #[must_use]
     pub fn new(setup_cost: f32, records: Vec<SolarRecord>) -> Self {
         Self {
             setup_cost,
@@ -31,55 +32,67 @@ impl SolarData {
         self.records.append(&mut records);
     }
 
+    #[must_use]
     pub fn aggregate(&self) -> Vec<AggregateSolarRecord> {
         self.records
             .iter()
             .group_by(|r| r.date_time.date_naive())
             .into_iter()
-            .map(|(_, records)| AggregateSolarRecord::new(records.collect()))
+            .map(|(_, records)| AggregateSolarRecord::new(&records.collect::<Vec<_>>()))
             .collect()
     }
 
+    #[must_use]
     pub fn cost(&self) -> f32 {
-        self.records.iter().map(|r| r.cost()).sum()
+        self.records.iter().map(SolarRecord::cost).sum()
     }
 
+    #[must_use]
     pub fn old_cost(&self) -> f32 {
-        self.records.iter().map(|r| r.old_cost()).sum()
+        self.records.iter().map(SolarRecord::old_cost).sum()
     }
 
+    #[must_use]
     pub fn savings(&self) -> f32 {
-        self.records.iter().map(|r| r.savings()).sum()
+        self.records.iter().map(SolarRecord::savings).sum()
     }
 
+    #[must_use]
     pub fn production(&self) -> f32 {
-        self.records.iter().map(|r| r.production()).sum()
+        self.records.iter().map(SolarRecord::production).sum()
     }
 
+    #[must_use]
     pub fn consumption(&self) -> f32 {
-        self.records.iter().map(|r| r.consumption()).sum()
+        self.records.iter().map(SolarRecord::consumption).sum()
     }
 
+    #[must_use]
     pub fn purchased(&self) -> f32 {
-        self.records.iter().map(|r| r.purchased()).sum()
+        self.records.iter().map(SolarRecord::purchased).sum()
     }
 
+    #[must_use]
     pub fn feed_in(&self) -> f32 {
-        self.records.iter().map(|r| r.feed_in()).sum()
+        self.records.iter().map(SolarRecord::feed_in).sum()
     }
 
+    #[must_use]
     pub fn mean_savings(&self) -> f32 {
         self.savings() / self.aggregate().len() as f32
     }
 
+    #[must_use]
     pub fn remaining_setup_cost(&self) -> f32 {
         self.setup_cost - self.savings()
     }
 
+    #[must_use]
     pub fn remaining_days(&self) -> f32 {
         self.remaining_setup_cost() / self.mean_savings()
     }
 
+    #[must_use]
     pub fn payoff_date(&self) -> DateTime<Utc> {
         Utc::now() + chrono::Duration::days(self.remaining_days() as i64)
     }
@@ -87,19 +100,12 @@ impl SolarData {
     pub fn from_folder<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
         let directory_elements = std::fs::read_dir(path)?.collect::<Result<Vec<_>, _>>()?;
 
-        let csv_files = directory_elements
-            .into_iter()
-            .filter(|entry| {
-                let is_file = entry.file_type().map(|ft| ft.is_file()).unwrap_or(false);
-                let has_csv_extension = entry
-                    .path()
-                    .extension()
-                    .map(|ext| ext == "csv")
-                    .unwrap_or(false);
+        let csv_files = directory_elements.into_iter().filter(|entry| {
+            let is_file = entry.file_type().map(|ft| ft.is_file()).unwrap_or(false);
+            let has_csv_extension = entry.path().extension().map_or(false, |ext| ext == "csv");
 
-                is_file && has_csv_extension
-            })
-            .collect::<Vec<_>>();
+            is_file && has_csv_extension
+        });
 
         let sorted_raw_records = csv_files
             .into_iter()
