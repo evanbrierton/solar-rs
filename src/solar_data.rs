@@ -1,6 +1,6 @@
 use std::{
     fmt::{self, Display, Formatter},
-    fs::ReadDir,
+    path::Path,
 };
 
 use chrono::{DateTime, Utc};
@@ -83,34 +83,48 @@ impl SolarData {
     pub fn payoff_date(&self) -> DateTime<Utc> {
         Utc::now() + chrono::Duration::days(self.remaining_days() as i64)
     }
-}
 
-impl From<ReadDir> for SolarData {
-    fn from(dir: ReadDir) -> Self {
-        let mut start_time = None;
-        let mut records = Vec::new();
+    pub fn from_folder<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
+        let directory_elements = std::fs::read_dir(path)?.collect::<Result<Vec<_>, _>>()?;
 
-        for entry in dir.sorted_by_key(|dir| dir.as_ref().unwrap().path()) {
-            let entry = entry.unwrap();
-            let path = entry.path();
-            let file_name = path.file_name().unwrap().to_str().unwrap();
+        let csv_files = directory_elements
+            .into_iter()
+            .filter(|entry| {
+                let is_file = entry.file_type().map(|ft| ft.is_file()).unwrap_or(false);
+                let has_csv_extension = entry
+                    .path()
+                    .extension()
+                    .map(|ext| ext == "csv")
+                    .unwrap_or(false);
 
-            if file_name.ends_with(".csv") {
-                let raw_record = read_from_file::<SolarManRecord>(path.to_str().unwrap()).unwrap();
-                let mut record = raw_record
-                    .iter()
-                    .map(|r| {
-                        let sr = SolarRecord::new(r, start_time);
-                        start_time = Some(sr.date_time);
-                        sr
-                    })
-                    .collect::<Vec<_>>();
+                is_file && has_csv_extension
+            })
+            .collect::<Vec<_>>();
 
-                records.append(&mut record);
-            }
-        }
+        let sorted_raw_records = csv_files
+            .into_iter()
+            .map(|file_entry| read_from_file::<SolarManRecord, _>(file_entry.path()))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
+            .sorted_by_key(|solarman_record| solarman_record.time)
+            .collect::<Vec<_>>();
 
-        Self::new(SETUP_COST, records)
+        let records = sorted_raw_records
+            .iter()
+            .enumerate()
+            .map(|(index, record)| {
+                let start_time = if index == 0 {
+                    None
+                } else {
+                    Some(sorted_raw_records[index - 1].time)
+                };
+
+                SolarRecord::new(record, start_time)
+            })
+            .collect::<Vec<_>>();
+
+        Ok(Self::new(SETUP_COST, records))
     }
 }
 

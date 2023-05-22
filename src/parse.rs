@@ -1,8 +1,12 @@
-use std::error::Error;
+use std::{error::Error, path::Path};
 
 use serde::{Deserialize, Serialize};
 
-pub fn read_from_file<T: for<'de> Deserialize<'de>>(path: &str) -> Result<Vec<T>, Box<dyn Error>> {
+pub fn read_from_file<T, P>(path: P) -> Result<Vec<T>, csv::Error>
+where
+    T: for<'de> Deserialize<'de>,
+    P: AsRef<Path>,
+{
     let mut rdr = csv::Reader::from_path(path)?;
     let mut records = Vec::new();
 
@@ -14,7 +18,11 @@ pub fn read_from_file<T: for<'de> Deserialize<'de>>(path: &str) -> Result<Vec<T>
     Ok(records)
 }
 
-pub fn write_to_file<T: Serialize>(path: &str, records: &[T]) -> Result<(), Box<dyn Error>> {
+pub fn write_to_file<T, P>(path: &str, records: &[T]) -> Result<(), Box<dyn Error>>
+where
+    T: Serialize,
+    P: AsRef<Path>,
+{
     let mut wtr = csv::Writer::from_path(path)?;
 
     for record in records {
