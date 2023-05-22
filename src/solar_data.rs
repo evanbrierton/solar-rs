@@ -78,7 +78,7 @@ impl SolarData {
 
 impl From<ReadDir> for SolarData {
     fn from(dir: ReadDir) -> Self {
-        let start_time = None;
+        let mut start_time = None;
         let mut records = Vec::new();
 
         for entry in dir.sorted_by_key(|dir| dir.as_ref().unwrap().path()) {
@@ -90,7 +90,11 @@ impl From<ReadDir> for SolarData {
                 let raw_record = read_from_file::<SolarManRecord>(path.to_str().unwrap()).unwrap();
                 let mut record = raw_record
                     .iter()
-                    .map(|r| SolarRecord::new(r, start_time))
+                    .map(|r| {
+                        let sr = SolarRecord::new(r, start_time);
+                        start_time = Some(sr.date_time);
+                        sr
+                    })
                     .collect::<Vec<_>>();
 
                 records.append(&mut record);
