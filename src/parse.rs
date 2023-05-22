@@ -18,7 +18,11 @@ where
     Ok(records)
 }
 
-pub fn write_to_file<T: Serialize>(path: &str, records: &[T]) -> Result<(), Box<dyn Error>> {
+pub fn write_to_file<T, P>(path: &str, records: &[T]) -> Result<(), Box<dyn Error>>
+where
+    T: Serialize,
+    P: AsRef<Path>,
+{
     let mut wtr = csv::Writer::from_path(path)?;
 
     for record in records {
