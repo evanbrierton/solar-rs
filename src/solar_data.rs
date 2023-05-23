@@ -5,10 +5,17 @@ use std::{
 
 use chrono::{DateTime, Utc};
 use itertools::Itertools;
-use tabled::{builder::Builder, settings::Style};
+use tabled::{
+    builder::Builder,
+    settings::{Concat, Style},
+    Table,
+};
 
 use crate::{
-    aggregate_solar_record::AggregateSolarRecord, parse::read_from_file, solar_record::SolarRecord,
+    aggregate_solar_record::AggregateSolarRecord,
+    formatting::{euro_to_string, kwh_to_string},
+    parsers::parse_spreadsheets_from_folder,
+    solar_record::SolarRecord,
     solarman_record::SolarManRecord,
 };
 
@@ -36,6 +43,7 @@ impl SolarData {
     pub fn aggregate(&self) -> Vec<AggregateSolarRecord> {
         self.records
             .iter()
+            .copied()
             .group_by(|r| r.date_time.date_naive())
             .into_iter()
             .map(|(_, records)| AggregateSolarRecord::new(&records.collect::<Vec<_>>()))
@@ -79,6 +87,8 @@ impl SolarData {
 
     #[must_use]
     pub fn mean_savings(&self) -> f32 {
+        let length = self.aggregate().len() as f32;
+
         self.savings() / self.aggregate().len() as f32
     }
 
@@ -97,33 +107,22 @@ impl SolarData {
         Utc::now() + chrono::Duration::days(self.remaining_days() as i64)
     }
 
+    /// # Errors
+    /// # Panics
     pub fn from_folder<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
-        let directory_elements = std::fs::read_dir(path)?.collect::<Result<Vec<_>, _>>()?;
-
-        let csv_files = directory_elements.into_iter().filter(|entry| {
-            let is_file = entry.file_type().map(|ft| ft.is_file()).unwrap_or(false);
-            let has_csv_extension = entry.path().extension().map_or(false, |ext| ext == "csv");
-
-            is_file && has_csv_extension
-        });
-
-        let sorted_raw_records = csv_files
-            .into_iter()
-            .map(|file_entry| read_from_file::<SolarManRecord, _>(file_entry.path()))
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .flatten()
+        let raw_records = parse_spreadsheets_from_folder::<SolarManRecord, _>(path)?;
+        let sorted_raw_records = raw_records
+            .iter()
             .sorted_by_key(|solarman_record| solarman_record.time)
             .collect::<Vec<_>>();
 
         let records = sorted_raw_records
             .iter()
             .enumerate()
-            .map(|(index, record)| {
-                let start_time = if index == 0 {
-                    None
-                } else {
-                    Some(sorted_raw_records[index - 1].time)
+            .map(|(i, record)| {
+                let start_time = match i {
+                    0 => None,
+                    _ => Some(sorted_raw_records[i - 1].time),
                 };
 
                 SolarRecord::new(record, start_time)
@@ -136,38 +135,24 @@ impl SolarData {
 
 impl Display for SolarData {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let headers = vec![
-            "Date",
-            "Old Cost",
-            "New Cost",
-            "Savings",
-            "Production",
-            "Consumption",
-            "Purchased",
-            "Feed In",
-        ];
+        let mut table = Table::new(self.aggregate());
+        table.with(Style::rounded());
 
-        let mut builder = Builder::default();
-        builder.set_header(headers);
-
-        for record in self.aggregate() {
-            builder.push_record(record.to_table_row());
-        }
-
-        let total = vec![
+        let mut builder = Builder::from_iter([[
             "Total".to_string(),
-            format!("€{:.2}", self.old_cost()),
-            format!("€{:.2}", self.cost()),
-            format!("€{:.2}", self.savings()),
-            format!("{:.2}kWh", self.production() / 1000.0),
-            format!("{:.2}kWh", self.consumption() / 1000.0),
-            format!("{:.2}kWh", self.purchased() / 1000.0),
-            format!("{:.2}kWh", self.feed_in() / 1000.0),
-        ];
+            euro_to_string(&self.old_cost()),
+            euro_to_string(&self.cost()),
+            euro_to_string(&self.savings()),
+            kwh_to_string(&self.production()),
+            kwh_to_string(&self.consumption()),
+            kwh_to_string(&self.purchased()),
+            kwh_to_string(&self.feed_in()),
+        ]]);
 
-        builder.push_record(total);
+        builder.remove_header();
+        let total = builder.build();
 
-        let table = builder.build().with(Style::rounded()).to_string();
+        table.with(Concat::vertical(total));
 
         let output = format!(
             "{}\n{}\n{}\n{}\n",

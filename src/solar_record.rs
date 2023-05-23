@@ -2,6 +2,7 @@ use chrono::{DateTime, Duration, Utc};
 
 use crate::{rate::Rate, solarman_record::SolarManRecord};
 
+#[derive(Debug, Clone, Copy)]
 pub struct SolarRecord {
     pub date_time: DateTime<Utc>,
     duration: Duration,
