@@ -2,6 +2,12 @@
 name = "solar-rs"
 version = "0.1.0"
 edition = "2021"
+description = "Project to analyse PV data pulled from Solarman."
+license = "MIT"
+repository = "https://github.com/evanbrierton/solar-rs"
+readme = "README.md"
+keywords = ["solar", "pv", "solarman"]
+categories = ["science", "command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

@@ -3,8 +3,8 @@ use std::{ffi::OsStr, path::Path};
 pub mod csv;
 pub mod excel;
 
-pub(crate) const EXTENSIONS: [&str; 3] = ["csv", "xlsx", "xls"];
-
+/// # Errors
+/// # Panics
 pub fn parse_spreadsheets_from_folder<T, P>(path: P) -> anyhow::Result<Vec<T>>
 where
     P: AsRef<Path>,
@@ -14,10 +14,9 @@ where
 
     let files = directory_elements.into_iter().filter(|entry| {
         let is_file = entry.file_type().map(|ft| ft.is_file()).unwrap_or(false);
-        let has_spreadsheet_extension = entry
-            .path()
-            .extension()
-            .map_or(false, |ext| EXTENSIONS.contains(&ext.to_str().unwrap()));
+        let has_spreadsheet_extension = entry.path().extension().map_or(false, |ext| {
+            matches!(ext.to_str(), Some("csv" | "xlsx" | "xls"))
+        });
 
         is_file && has_spreadsheet_extension
     });

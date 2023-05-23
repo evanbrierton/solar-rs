@@ -87,8 +87,6 @@ impl SolarData {
 
     #[must_use]
     pub fn mean_savings(&self) -> f32 {
-        let length = self.aggregate().len() as f32;
-
         self.savings() / self.aggregate().len() as f32
     }
 

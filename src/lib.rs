@@ -1,4 +1,10 @@
-#![warn(clippy::pedantic)]
+#![warn(clippy::pedantic, clippy::cargo)]
+#![allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_lossless
+)]
 
 pub mod aggregate_solar_record;
 pub mod formatting;
