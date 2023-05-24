@@ -1,9 +1,7 @@
-use std::{
-    fmt::{self, Display, Formatter},
-    path::Path,
-};
+use core::fmt::{self, Display, Formatter};
+use std::path::Path;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use itertools::Itertools;
 use tabled::{
     builder::Builder,
@@ -41,13 +39,13 @@ impl SolarData {
 
     #[must_use]
     pub fn aggregate(&self) -> Vec<AggregateSolarRecord> {
-        self.records
-            .iter()
-            .copied()
-            .group_by(|r| r.date_time.date_naive())
-            .into_iter()
-            .map(|(_, records)| AggregateSolarRecord::new(&records.collect::<Vec<_>>()))
-            .collect()
+        let groups = self.records.iter().group_by(|r| r.date_time.date_naive());
+
+        let labelled_groups = groups.into_iter().map(|(date, records)| {
+            AggregateSolarRecord::new(&records.copied().collect::<Vec<_>>(), date)
+        });
+
+        labelled_groups.collect::<Vec<_>>()
     }
 
     #[must_use]
@@ -96,13 +94,14 @@ impl SolarData {
     }
 
     #[must_use]
-    pub fn remaining_days(&self) -> f32 {
-        self.remaining_setup_cost() / self.mean_savings()
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn remaining_days(&self) -> i64 {
+        (self.remaining_setup_cost() / self.mean_savings()).round() as i64
     }
 
     #[must_use]
-    pub fn payoff_date(&self) -> DateTime<Utc> {
-        Utc::now() + chrono::Duration::days(self.remaining_days() as i64)
+    pub fn payoff_date(&self) -> NaiveDate {
+        (Utc::now() + chrono::Duration::days(self.remaining_days())).date_naive()
     }
 
     /// # Errors
@@ -114,16 +113,14 @@ impl SolarData {
             .sorted_by_key(|solarman_record| solarman_record.time)
             .collect::<Vec<_>>();
 
+        let mut start_time: Option<DateTime<Utc>> = None;
+
         let records = sorted_raw_records
             .iter()
-            .enumerate()
-            .map(|(i, record)| {
-                let start_time = match i {
-                    0 => None,
-                    _ => Some(sorted_raw_records[i - 1].time),
-                };
-
-                SolarRecord::new(record, start_time)
+            .map(|raw_record| {
+                let record = SolarRecord::new(raw_record, start_time);
+                start_time = Some(record.date_time);
+                record
             })
             .collect::<Vec<_>>();
 
@@ -137,7 +134,7 @@ impl Display for SolarData {
         table.with(Style::rounded());
 
         let mut builder = Builder::from_iter([[
-            "Total".to_string(),
+            "Total".to_owned(),
             euro_to_string(&self.old_cost()),
             euro_to_string(&self.cost()),
             euro_to_string(&self.savings()),
@@ -157,7 +154,7 @@ impl Display for SolarData {
             table,
             self.mean_savings(),
             self.remaining_setup_cost(),
-            self.payoff_date().to_rfc2822()
+            self.payoff_date()
         );
 
         write!(f, "{}", output)

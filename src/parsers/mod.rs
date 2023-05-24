@@ -13,7 +13,7 @@ where
     let directory_elements = std::fs::read_dir(path)?.collect::<Result<Vec<_>, _>>()?;
 
     let files = directory_elements.into_iter().filter(|entry| {
-        let is_file = entry.file_type().map(|ft| ft.is_file()).unwrap_or(false);
+        let is_file = entry.file_type().map(|ft| !ft.is_dir()).unwrap_or(false);
         let has_spreadsheet_extension = entry.path().extension().map_or(false, |ext| {
             matches!(ext.to_str(), Some("csv" | "xlsx" | "xls"))
         });

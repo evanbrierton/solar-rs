@@ -1,5 +1,5 @@
 use chrono::{DateTime, TimeZone, Utc};
-use num_traits::Num;
+use num_traits::{Num, NumCast};
 use serde::{Deserialize, Deserializer, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -30,12 +30,18 @@ where
     D: Deserializer<'de>,
 {
     let f: f32 = Deserialize::deserialize(deserializer).map_err(serde::de::Error::custom)?;
-    let i = match T::try_from(f.round() as i32) {
-        Ok(i) => i,
+
+    let i: i32 = match NumCast::from(f) {
+        Some(x) => x,
+        None => return Err(serde::de::Error::custom("")),
+    };
+
+    let d = match T::try_from(i) {
+        Ok(d) => d,
         Err(_) => return Err(serde::de::Error::custom("")),
     };
 
-    Ok(i)
+    Ok(d)
 }
 
 fn deserialize_date<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>

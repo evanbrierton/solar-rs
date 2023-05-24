@@ -9,7 +9,7 @@ pub enum Rate {
 
 impl Rate {
     fn value(&self) -> f32 {
-        match self {
+        match *self {
             Rate::Day => 0.000_438_6,
             Rate::Night => 0.000_215_5,
             Rate::NightBoost => 0.000_126_5,
@@ -25,11 +25,12 @@ impl Rate {
 
 impl From<DateTime<Utc>> for Rate {
     fn from(date: DateTime<Utc>) -> Self {
+        #![allow(clippy::unreachable)]
         match date.hour() {
             23 | 0..=1 | 4..=7 => Rate::Night,
             2..=3 => Rate::NightBoost,
             8..=22 => Rate::Day,
-            _ => unreachable!(),
+            _ => unreachable!("Invalid hour"),
         }
     }
 }

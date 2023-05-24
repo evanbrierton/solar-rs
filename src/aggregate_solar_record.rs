@@ -3,7 +3,6 @@ use tabled::Tabled;
 
 use crate::formatting::{euro_to_string, kwh_to_string};
 use crate::solar_record::SolarRecord;
-
 #[derive(Tabled)]
 pub struct AggregateSolarRecord {
     #[tabled(rename = "Date", display_with = "NaiveDate::to_string")]
@@ -26,8 +25,7 @@ pub struct AggregateSolarRecord {
 
 impl AggregateSolarRecord {
     #[must_use]
-    pub fn new(records: &[SolarRecord]) -> Self {
-        let date = records[0].date_time.date_naive();
+    pub fn new(records: &[SolarRecord], date: NaiveDate) -> Self {
         let sum = |f: fn(&SolarRecord) -> f32| records.iter().map(f).sum::<f32>();
 
         let old_cost = sum(SolarRecord::old_cost);
