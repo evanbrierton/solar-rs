@@ -19,6 +19,7 @@ use crate::{
 
 const SETUP_COST: f64 = 11_000_f64;
 
+#[derive(Debug)]
 pub struct SolarData {
     pub setup_cost: f64,
     records: Vec<SolarRecord>,

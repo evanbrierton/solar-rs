@@ -1,6 +1,8 @@
+use std::fmt::Display;
+
 use chrono::{DateTime, Timelike, Utc};
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 
 pub enum Rate {
     Day,
@@ -40,5 +42,16 @@ impl From<DateTime<Utc>> for Rate {
 impl From<Rate> for f64 {
     fn from(rate: Rate) -> Self {
         rate.value()
+    }
+}
+
+impl Display for Rate {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match *self {
+            Rate::Day => write!(f, "Day"),
+            Rate::Night => write!(f, "Night"),
+            Rate::NightBoost => write!(f, "Night Boost"),
+            Rate::FeedIn => write!(f, "Feed In"),
+        }
     }
 }

@@ -4,7 +4,7 @@ use tabled::Tabled;
 use crate::formatting::{euro_to_string, kwh_to_string};
 use crate::solar_record::SolarRecord;
 
-#[derive(Tabled)]
+#[derive(Debug, Tabled)]
 pub struct AggregateSolarRecord {
     #[tabled(rename = "Date", display_with = "NaiveDate::to_string")]
     date: NaiveDate,

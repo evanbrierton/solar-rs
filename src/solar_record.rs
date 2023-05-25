@@ -104,8 +104,8 @@ impl SolarRecord {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use anyhow::{anyhow, ensure};
-    use chrono::{Duration, Utc};
+    use anyhow::{anyhow, ensure, Context};
+    use chrono::{Duration, TimeZone, Utc};
 
     fn fuzzy_eq(a: f64, b: f64) -> bool {
         (a - b).abs() < f64::EPSILON
@@ -122,24 +122,47 @@ mod tests {
             soc: 0,
         };
 
-        let start_time = Some(Utc::now() - Duration::minutes(5));
+        let start_time = Some(record.time - Duration::minutes(5));
         let solar_record = SolarRecord::new(&record, start_time);
 
         ensure!(
             solar_record.production == 100,
-            anyhow!("production mismatch")
+            anyhow!(format!(
+                "production mismatch, expected 100, got {}",
+                solar_record.production
+            ))
         );
 
         ensure!(
             solar_record.consumption == 50,
-            anyhow!("consumption mismatch")
+            anyhow!(format!(
+                "consumption mismatch, expected 50, got {}",
+                solar_record.consumption
+            ))
         );
 
-        ensure!(solar_record.grid == 0_i32, anyhow!("grid mismatch"));
+        ensure!(
+            solar_record.grid == 0_i32,
+            anyhow!(format!(
+                "grid mismatch, expected 0, got {}",
+                solar_record.grid
+            ))
+        );
 
         ensure!(
-            solar_record.duration == Duration::minutes(0),
-            anyhow!("duration mismatch")
+            solar_record.date_time == record.time,
+            anyhow!(format!(
+                "date_time mismatch, expected {}, got {}",
+                record.time, solar_record.date_time
+            ))
+        );
+
+        ensure!(
+            solar_record.duration == Duration::minutes(5),
+            anyhow!(format!(
+                "duration mismatch, expected 5 minutes, got {}",
+                solar_record.duration
+            ))
         );
 
         Ok(())
@@ -147,32 +170,51 @@ mod tests {
 
     #[test]
     fn test_rate() -> anyhow::Result<()> {
+        let date_time = Utc
+            .with_ymd_and_hms(2023, 5, 22, 12, 0, 0)
+            .single()
+            .context("Failed to create expected DateTime<Utc> value")?;
+
         let record = SolarRecord {
-            date_time: Utc::now(),
+            date_time,
             duration: Duration::minutes(60),
             production: 100,
             consumption: 50,
-            grid: -25,
+            grid: 25,
         };
 
-        ensure!(record.rate() == Rate::FeedIn, anyhow!("rate mismatch"));
+        ensure!(
+            record.rate() == Rate::FeedIn,
+            anyhow!(format!(
+                "rate mismatch, expected Feed In, got {}",
+                record.rate()
+            ))
+        );
 
         Ok(())
     }
 
     #[test]
     fn test_old_rate() -> anyhow::Result<()> {
+        let date_time = Utc
+            .with_ymd_and_hms(2023, 5, 22, 12, 0, 0)
+            .single()
+            .context("Failed to create expected DateTime<Utc> value")?;
+
         let record = SolarRecord {
-            date_time: Utc::now(),
+            date_time,
             duration: Duration::minutes(60),
             production: 100,
             consumption: 50,
-            grid: -25,
+            grid: 25,
         };
 
         ensure!(
-            record.old_rate() == Rate::FeedIn,
-            anyhow!("old rate mismatch")
+            record.old_rate() == Rate::Day,
+            anyhow!(format!(
+                "old_rate mismatch, expected Day, got {}",
+                record.old_rate()
+            ))
         );
 
         Ok(())
@@ -180,44 +222,77 @@ mod tests {
 
     #[test]
     fn test_savings() -> anyhow::Result<()> {
+        let date_time = Utc
+            .with_ymd_and_hms(2023, 5, 22, 12, 0, 0)
+            .single()
+            .context("Failed to create expected DateTime<Utc> value")?;
+
         let record = SolarRecord {
-            date_time: Utc::now(),
+            date_time,
             duration: Duration::minutes(60),
             production: 100,
             consumption: 50,
-            grid: -25,
+            grid: 25,
         };
 
-        ensure!(record.savings() == 0_f64, anyhow!("savings mismatch"));
+        ensure!(
+            fuzzy_eq(record.savings(), 0.02718),
+            anyhow!(format!(
+                "savings mismatch, expected 0, got {}",
+                record.savings()
+            ))
+        );
 
         Ok(())
     }
 
     #[test]
     fn test_cost() -> anyhow::Result<()> {
+        let date_time = Utc
+            .with_ymd_and_hms(2023, 5, 22, 12, 0, 0)
+            .single()
+            .context("Failed to create expected DateTime<Utc> value")?;
+
         let record = SolarRecord {
-            date_time: Utc::now(),
+            date_time,
             duration: Duration::minutes(60),
             production: 100,
             consumption: 50,
             grid: -25,
         };
 
-        ensure!(record.cost() == 0_f64, anyhow!("cost mismatch"));
+        ensure!(
+            fuzzy_eq(record.cost(), 0.010_965),
+            anyhow!(format!(
+                "cost mismatch, expected 0.010965, got {}",
+                record.cost()
+            ))
+        );
         Ok(())
     }
 
     #[test]
     fn test_old_cost() -> anyhow::Result<()> {
+        let date_time = Utc
+            .with_ymd_and_hms(2023, 5, 22, 12, 0, 0)
+            .single()
+            .context("Failed to create expected DateTime<Utc> value")?;
+
         let record = SolarRecord {
-            date_time: Utc::now(),
+            date_time,
             duration: Duration::minutes(60),
             production: 100,
             consumption: 50,
             grid: -25,
         };
 
-        ensure!(record.old_cost() == 0_f64, anyhow!("old cost mismatch"));
+        ensure!(
+            fuzzy_eq(record.cost(), 0.010_965),
+            anyhow!(format!(
+                "cost mismatch, expected 0.010965, got {}",
+                record.cost()
+            ))
+        );
 
         Ok(())
     }
@@ -234,7 +309,10 @@ mod tests {
 
         ensure!(
             fuzzy_eq(record.production(), 100.0),
-            anyhow!("production mismatch")
+            anyhow!(format!(
+                "production mismatch, expected 100.0, got {}",
+                record.production()
+            ))
         );
 
         Ok(())
@@ -252,7 +330,10 @@ mod tests {
 
         ensure!(
             fuzzy_eq(record.consumption(), 50.0),
-            anyhow!("consumption mismatch")
+            anyhow!(format!(
+                "consumption mismatch, expected 50.0, got {}",
+                record.consumption()
+            ))
         );
 
         Ok(())
@@ -270,7 +351,10 @@ mod tests {
 
         ensure!(
             fuzzy_eq(record.purchased(), 25.0),
-            anyhow!("purchased mismatch")
+            anyhow!(format!(
+                "purchased mismatch, expected 25.0, got {}",
+                record.purchased()
+            ))
         );
 
         Ok(())
@@ -288,7 +372,10 @@ mod tests {
 
         ensure!(
             fuzzy_eq(record.feed_in(), 25.0),
-            anyhow!("feed in mismatch")
+            anyhow!(format!(
+                "feed_in mismatch, expected 25.0, got {}",
+                record.feed_in()
+            ))
         );
 
         Ok(())
