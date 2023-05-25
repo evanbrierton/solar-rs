@@ -14,19 +14,19 @@ use crate::{
     formatting::{euro_to_string, kwh_to_string},
     parsers::parse_spreadsheets_from_folder,
     solar_record::SolarRecord,
-    solarman_record::SolarManRecord,
+    solarman_record::SolarmanRecord,
 };
 
-const SETUP_COST: f32 = 11_000.0;
+const SETUP_COST: f64 = 11_000_f64;
 
 pub struct SolarData {
-    pub setup_cost: f32,
+    pub setup_cost: f64,
     records: Vec<SolarRecord>,
 }
 
 impl SolarData {
     #[must_use]
-    pub fn new(setup_cost: f32, records: Vec<SolarRecord>) -> Self {
+    pub fn new(setup_cost: f64, records: Vec<SolarRecord>) -> Self {
         Self {
             setup_cost,
             records,
@@ -49,47 +49,47 @@ impl SolarData {
     }
 
     #[must_use]
-    pub fn cost(&self) -> f32 {
+    pub fn cost(&self) -> f64 {
         self.records.iter().map(SolarRecord::cost).sum()
     }
 
     #[must_use]
-    pub fn old_cost(&self) -> f32 {
+    pub fn old_cost(&self) -> f64 {
         self.records.iter().map(SolarRecord::old_cost).sum()
     }
 
     #[must_use]
-    pub fn savings(&self) -> f32 {
+    pub fn savings(&self) -> f64 {
         self.records.iter().map(SolarRecord::savings).sum()
     }
 
     #[must_use]
-    pub fn production(&self) -> f32 {
+    pub fn production(&self) -> f64 {
         self.records.iter().map(SolarRecord::production).sum()
     }
 
     #[must_use]
-    pub fn consumption(&self) -> f32 {
+    pub fn consumption(&self) -> f64 {
         self.records.iter().map(SolarRecord::consumption).sum()
     }
 
     #[must_use]
-    pub fn purchased(&self) -> f32 {
+    pub fn purchased(&self) -> f64 {
         self.records.iter().map(SolarRecord::purchased).sum()
     }
 
     #[must_use]
-    pub fn feed_in(&self) -> f32 {
+    pub fn feed_in(&self) -> f64 {
         self.records.iter().map(SolarRecord::feed_in).sum()
     }
 
     #[must_use]
-    pub fn mean_savings(&self) -> f32 {
-        self.savings() / self.aggregate().len() as f32
+    pub fn mean_savings(&self) -> f64 {
+        self.savings() / self.aggregate().len() as f64
     }
 
     #[must_use]
-    pub fn remaining_setup_cost(&self) -> f32 {
+    pub fn remaining_setup_cost(&self) -> f64 {
         self.setup_cost - self.savings()
     }
 
@@ -107,7 +107,7 @@ impl SolarData {
     /// # Errors
     /// # Panics
     pub fn from_folder<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
-        let raw_records = parse_spreadsheets_from_folder::<SolarManRecord, _>(path)?;
+        let raw_records = parse_spreadsheets_from_folder::<SolarmanRecord, _>(path)?;
         let sorted_raw_records = raw_records
             .iter()
             .sorted_by_key(|solarman_record| solarman_record.time)

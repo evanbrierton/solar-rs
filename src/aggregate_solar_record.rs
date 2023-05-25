@@ -3,30 +3,31 @@ use tabled::Tabled;
 
 use crate::formatting::{euro_to_string, kwh_to_string};
 use crate::solar_record::SolarRecord;
+
 #[derive(Tabled)]
 pub struct AggregateSolarRecord {
     #[tabled(rename = "Date", display_with = "NaiveDate::to_string")]
     date: NaiveDate,
     #[tabled(rename = "Old Cost", display_with = "euro_to_string")]
-    old_cost: f32,
+    old_cost: f64,
     #[tabled(rename = "New Cost", display_with = "euro_to_string")]
-    new_cost: f32,
+    new_cost: f64,
     #[tabled(rename = "Savings", display_with = "euro_to_string")]
-    savings: f32,
+    savings: f64,
     #[tabled(rename = "Production", display_with = "kwh_to_string")]
-    production: f32,
+    production: f64,
     #[tabled(rename = "Consumption", display_with = "kwh_to_string")]
-    consumption: f32,
+    consumption: f64,
     #[tabled(rename = "Purchased", display_with = "kwh_to_string")]
-    purchased: f32,
+    purchased: f64,
     #[tabled(rename = "Feed In", display_with = "kwh_to_string")]
-    feed_in: f32,
+    feed_in: f64,
 }
 
 impl AggregateSolarRecord {
     #[must_use]
     pub fn new(records: &[SolarRecord], date: NaiveDate) -> Self {
-        let sum = |f: fn(&SolarRecord) -> f32| records.iter().map(f).sum::<f32>();
+        let sum = |f: fn(&SolarRecord) -> f64| records.iter().map(f).sum::<f64>();
 
         let old_cost = sum(SolarRecord::old_cost);
         let new_cost = sum(SolarRecord::cost);
@@ -55,10 +56,10 @@ impl AggregateSolarRecord {
             format!("€{:.2}", self.old_cost),
             format!("€{:.2}", self.new_cost),
             format!("€{:.2}", self.savings),
-            format!("{:.2}kWh", self.production / 1000.0),
-            format!("{:.2}kWh", self.consumption / 1000.0),
-            format!("{:.2}kWh", self.purchased / 1000.0),
-            format!("{:.2}kWh", self.feed_in / 1000.0),
+            format!("{:.2}kWh", self.production / 1000_f64),
+            format!("{:.2}kWh", self.consumption / 1000_f64),
+            format!("{:.2}kWh", self.purchased / 1000_f64),
+            format!("{:.2}kWh", self.feed_in / 1000_f64),
         ]
     }
 }

@@ -3,10 +3,14 @@ use std::path::Path;
 use calamine::{RangeDeserializerBuilder, Reader};
 use serde::Deserialize;
 
+/// Reads an Excel file from the given path and returns a vector of deserialized
+/// records.
+///
 /// # Errors
 ///
 /// Will return `Err` if `path` does not exist, if the user does not have
-/// permission to read it or if the file is not a valid excel file.
+/// permission to read it or if the file is not a valid Excel file.
+///
 pub fn read<T, P>(path: P) -> anyhow::Result<Vec<T>>
 where
     T: for<'de> Deserialize<'de>,
@@ -33,9 +37,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
+    use anyhow::{ensure, Context};
     use tempfile::NamedTempFile;
-    use xlsxwriter::{Format, Workbook, Worksheet};
+    use xlsxwriter::{Format, Workbook};
 
     #[derive(Debug, Deserialize, PartialEq)]
     struct Record {
@@ -44,45 +48,47 @@ mod tests {
     }
 
     #[test]
-    fn test_read_excel() {
-        let mut file = NamedTempFile::new().unwrap();
-        let workbook = Workbook::new(file.path().to_str().unwrap()).unwrap();
+    fn test_read_excel() -> anyhow::Result<()> {
+        let expected = vec![
+            Record {
+                name: "Alice".to_owned(),
+                age: 25,
+            },
+            Record {
+                name: "Bob".to_owned(),
+                age: 30,
+            },
+        ];
 
+        let file = NamedTempFile::new()?;
+        let path = file.path().to_str().context("Failed to get path")?;
 
-        let mut worksheet = match workbook.add_worksheet(None) {
-            Ok(worksheet) => worksheet,
-            Err(e) => panic!("Failed to add worksheet: {}", e),
-        };
+        let workbook = Workbook::new(path)?;
+        let mut worksheet = workbook.add_worksheet(None)?;
 
-        let bold = workbook.add_format().set_bold(true);
-        worksheet.write_string(0, 0, "name", Some(&bold)).unwrap();
-        worksheet.write_string(0, 1, "age", Some(&bold)).unwrap();
-        worksheet.write_string(1, 0, "Alice", None).unwrap();
-        worksheet.write_number(1, 1, 25, None).unwrap();
-        worksheet.write_string(2, 0, "Bob", None).unwrap();
-        worksheet.write_number(2, 1, 30, None).unwrap();
+        let mut bold = Format::new();
+        bold.set_bold();
 
-        workbook.close().unwrap();
+        worksheet.write_string(0, 0, "name", Some(&bold)).ok();
+        worksheet.write_string(0, 1, "age", Some(&bold)).ok();
+        worksheet.write_string(1, 0, "Alice", None).ok();
+        worksheet.write_number(1, 1, 25.0, None).ok();
+        worksheet.write_string(2, 0, "Bob", None).ok();
+        worksheet.write_number(2, 1, 30.0, None).ok();
 
-        let records = read::<Record, _>(file.path()).unwrap();
-        assert_eq!(
-            records,
-            vec![
-                Record {
-                    name: "Alice".to_string(),
-                    age: 25,
-                },
-                Record {
-                    name: "Bob".to_string(),
-                    age: 30,
-                },
-            ]
-        );
+        workbook.close().ok();
+
+        let records = read::<Record, _>(file.path())?;
+        ensure!(records == expected, "Records do not match");
+
+        Ok(())
     }
 
     #[test]
-    fn test_read_excel_invalid_file() {
+    fn test_read_excel_invalid_file() -> anyhow::Result<()> {
         let result = read::<Record, _>("/path/to/invalid/file.xlsx");
-        assert!(result.is_err());
+
+        ensure!(result.is_err(), "Expected error");
+        Ok(())
     }
 }

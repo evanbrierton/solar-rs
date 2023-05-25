@@ -1,5 +1,4 @@
 #![warn(clippy::pedantic, clippy::cargo, clippy::restriction)]
-#![allow(clippy::cast_precision_loss)]
 #![allow(
     clippy::missing_docs_in_private_items,
     clippy::missing_inline_in_public_items,
