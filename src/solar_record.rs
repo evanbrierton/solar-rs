@@ -127,42 +127,40 @@ mod tests {
 
         ensure!(
             solar_record.production == 100,
-            anyhow!(format!(
+            anyhow!(
                 "production mismatch, expected 100, got {}",
                 solar_record.production
-            ))
+            )
         );
 
         ensure!(
             solar_record.consumption == 50,
-            anyhow!(format!(
+            anyhow!(
                 "consumption mismatch, expected 50, got {}",
                 solar_record.consumption
-            ))
+            )
         );
 
         ensure!(
             solar_record.grid == 0_i32,
-            anyhow!(format!(
-                "grid mismatch, expected 0, got {}",
-                solar_record.grid
-            ))
+            anyhow!("grid mismatch, expected 0, got {}", solar_record.grid)
         );
 
         ensure!(
             solar_record.date_time == record.time,
-            anyhow!(format!(
+            anyhow!(
                 "date_time mismatch, expected {}, got {}",
-                record.time, solar_record.date_time
-            ))
+                record.time,
+                solar_record.date_time
+            )
         );
 
         ensure!(
             solar_record.duration == Duration::minutes(5),
-            anyhow!(format!(
+            anyhow!(
                 "duration mismatch, expected 5 minutes, got {}",
-                solar_record.duration
-            ))
+                solar_record.duration.num_minutes()
+            )
         );
 
         Ok(())
@@ -185,10 +183,7 @@ mod tests {
 
         ensure!(
             record.rate() == Rate::FeedIn,
-            anyhow!(format!(
-                "rate mismatch, expected Feed In, got {}",
-                record.rate()
-            ))
+            anyhow!("rate mismatch, expected Feed In, got {}", record.rate())
         );
 
         Ok(())
@@ -211,10 +206,7 @@ mod tests {
 
         ensure!(
             record.old_rate() == Rate::Day,
-            anyhow!(format!(
-                "old_rate mismatch, expected Day, got {}",
-                record.old_rate()
-            ))
+            anyhow!("old_rate mismatch, expected Day, got {}", record.old_rate())
         );
 
         Ok(())
@@ -237,10 +229,7 @@ mod tests {
 
         ensure!(
             fuzzy_eq(record.savings(), 0.02718),
-            anyhow!(format!(
-                "savings mismatch, expected 0, got {}",
-                record.savings()
-            ))
+            anyhow!("savings mismatch, expected 0, got {}", record.savings())
         );
 
         Ok(())
@@ -263,10 +252,7 @@ mod tests {
 
         ensure!(
             fuzzy_eq(record.cost(), 0.010_965),
-            anyhow!(format!(
-                "cost mismatch, expected 0.010965, got {}",
-                record.cost()
-            ))
+            anyhow!("cost mismatch, expected 0.010965, got {}", record.cost())
         );
         Ok(())
     }
@@ -288,10 +274,7 @@ mod tests {
 
         ensure!(
             fuzzy_eq(record.cost(), 0.010_965),
-            anyhow!(format!(
-                "cost mismatch, expected 0.010965, got {}",
-                record.cost()
-            ))
+            anyhow!("cost mismatch, expected 0.010965, got {}", record.cost())
         );
 
         Ok(())
@@ -309,10 +292,10 @@ mod tests {
 
         ensure!(
             fuzzy_eq(record.production(), 100.0),
-            anyhow!(format!(
+            anyhow!(
                 "production mismatch, expected 100.0, got {}",
                 record.production()
-            ))
+            )
         );
 
         Ok(())
@@ -330,10 +313,10 @@ mod tests {
 
         ensure!(
             fuzzy_eq(record.consumption(), 50.0),
-            anyhow!(format!(
+            anyhow!(
                 "consumption mismatch, expected 50.0, got {}",
                 record.consumption()
-            ))
+            )
         );
 
         Ok(())
@@ -351,10 +334,10 @@ mod tests {
 
         ensure!(
             fuzzy_eq(record.purchased(), 25.0),
-            anyhow!(format!(
+            anyhow!(
                 "purchased mismatch, expected 25.0, got {}",
                 record.purchased()
-            ))
+            )
         );
 
         Ok(())
@@ -372,10 +355,7 @@ mod tests {
 
         ensure!(
             fuzzy_eq(record.feed_in(), 25.0),
-            anyhow!(format!(
-                "feed_in mismatch, expected 25.0, got {}",
-                record.feed_in()
-            ))
+            anyhow!("feed_in mismatch, expected 25.0, got {}", record.feed_in())
         );
 
         Ok(())

@@ -52,12 +52,16 @@ where
 
     let i: i32 = match NumCast::from(f) {
         Some(x) => x,
-        None => return Err(serde::de::Error::custom("")),
+        None => return Err(serde::de::Error::custom("Failed to convert to i32")),
     };
 
     let d = match T::try_from(i) {
         Ok(d) => d,
-        Err(_) => return Err(serde::de::Error::custom("")),
+        Err(_) => {
+            return Err(serde::de::Error::custom(
+                "Failed to convert to integer type",
+            ))
+        }
     };
 
     Ok(d)

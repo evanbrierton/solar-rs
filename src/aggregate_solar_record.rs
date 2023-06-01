@@ -1,13 +1,14 @@
-use chrono::NaiveDate;
+use chrono::{DateTime, Utc};
 use tabled::Tabled;
 
 use crate::formatting::{euro_to_string, kwh_to_string};
+use crate::rate::Rate;
 use crate::solar_record::SolarRecord;
 
 #[derive(Debug, Tabled)]
 pub struct AggregateSolarRecord {
-    #[tabled(rename = "Date", display_with = "NaiveDate::to_string")]
-    date: NaiveDate,
+    #[tabled(rename = "Date")]
+    key: String,
     #[tabled(rename = "Old Cost", display_with = "euro_to_string")]
     old_cost: f64,
     #[tabled(rename = "New Cost", display_with = "euro_to_string")]
@@ -20,13 +21,15 @@ pub struct AggregateSolarRecord {
     consumption: f64,
     #[tabled(rename = "Purchased", display_with = "kwh_to_string")]
     purchased: f64,
+    #[tabled(rename = "Purchased w/o Boost", display_with = "kwh_to_string")]
+    purchased_without_boost: f64,
     #[tabled(rename = "Feed In", display_with = "kwh_to_string")]
     feed_in: f64,
 }
 
 impl AggregateSolarRecord {
     #[must_use]
-    pub fn new(records: &[SolarRecord], date: NaiveDate) -> Self {
+    pub fn new(records: &[SolarRecord], key: &str) -> Self {
         let sum = |f: fn(&SolarRecord) -> f64| records.iter().map(f).sum::<f64>();
 
         let old_cost = sum(SolarRecord::old_cost);
@@ -37,14 +40,21 @@ impl AggregateSolarRecord {
         let purchased = sum(SolarRecord::purchased);
         let feed_in = sum(SolarRecord::feed_in);
 
+        let purchased_without_boost = records
+            .iter()
+            .filter(|r| !(r.rate() == Rate::NightBoost))
+            .map(SolarRecord::purchased)
+            .sum();
+
         Self {
-            date,
+            key: key.to_owned(),
             old_cost,
             new_cost,
             savings,
             production,
             consumption,
             purchased,
+            purchased_without_boost,
             feed_in,
         }
     }
@@ -52,14 +62,35 @@ impl AggregateSolarRecord {
     #[must_use]
     pub fn to_table_row(&self) -> Vec<String> {
         vec![
-            self.date.to_string(),
-            format!("€{:.2}", self.old_cost),
-            format!("€{:.2}", self.new_cost),
-            format!("€{:.2}", self.savings),
-            format!("{:.2}kWh", self.production / 1000_f64),
-            format!("{:.2}kWh", self.consumption / 1000_f64),
-            format!("{:.2}kWh", self.purchased / 1000_f64),
-            format!("{:.2}kWh", self.feed_in / 1000_f64),
+            self.key.clone(),
+            euro_to_string(&self.old_cost),
+            euro_to_string(&self.new_cost),
+            euro_to_string(&self.savings),
+            kwh_to_string(&self.production),
+            kwh_to_string(&self.consumption),
+            kwh_to_string(&self.purchased),
+            kwh_to_string(&self.feed_in),
         ]
+    }
+}
+
+pub enum Period {
+    Minute,
+    Hour,
+    Day,
+    Month,
+    Year,
+}
+
+impl Period {
+    #[must_use]
+    pub fn key(&self, date: &DateTime<Utc>) -> String {
+        match self {
+            Self::Minute => format!("{}", date.format("%Y-%m-%d %H:%M")),
+            Self::Hour => format!("{}", date.format("%Y-%m-%d %H")),
+            Self::Day => format!("{}", date.format("%Y-%m-%d")),
+            Self::Month => format!("{}", date.format("%Y-%m")),
+            Self::Year => format!("{}", date.format("%Y")),
+        }
     }
 }

@@ -1,7 +1,7 @@
 use core::fmt::{self, Display, Formatter};
 use std::path::Path;
 
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use itertools::Itertools;
 use tabled::{
     builder::Builder,
@@ -10,9 +10,10 @@ use tabled::{
 };
 
 use crate::{
-    aggregate_solar_record::AggregateSolarRecord,
+    aggregate_solar_record::{AggregateSolarRecord, Period},
     formatting::{euro_to_string, kwh_to_string},
     parsers::parse_spreadsheets_from_folder,
+    rate::Rate,
     solar_record::SolarRecord,
     solarman_record::SolarmanRecord,
 };
@@ -39,11 +40,13 @@ impl SolarData {
     }
 
     #[must_use]
-    pub fn aggregate(&self) -> Vec<AggregateSolarRecord> {
-        let groups = self.records.iter().group_by(|r| r.date_time.date_naive());
+    pub fn aggregate(&self, period: Period) -> Vec<AggregateSolarRecord> {
+        let groups = self.records.iter().group_by(|r| r.date_time);
 
         let labelled_groups = groups.into_iter().map(|(date, records)| {
-            AggregateSolarRecord::new(&records.copied().collect::<Vec<_>>(), date)
+            let key = period.key(&date);
+
+            AggregateSolarRecord::new(&records.copied().collect::<Vec<_>>(), &key)
         });
 
         labelled_groups.collect::<Vec<_>>()
@@ -80,13 +83,22 @@ impl SolarData {
     }
 
     #[must_use]
+    pub fn purchased_at_rate(&self, rate: &Rate) -> f64 {
+        self.records
+            .iter()
+            .filter(|r| r.rate() == *rate)
+            .map(SolarRecord::purchased)
+            .sum()
+    }
+
+    #[must_use]
     pub fn feed_in(&self) -> f64 {
         self.records.iter().map(SolarRecord::feed_in).sum()
     }
 
     #[must_use]
     pub fn mean_savings(&self) -> f64 {
-        self.savings() / self.aggregate().len() as f64
+        self.savings() / self.aggregate(Period::Day).len() as f64
     }
 
     #[must_use]
@@ -131,7 +143,7 @@ impl SolarData {
 
 impl Display for SolarData {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let mut table = Table::new(self.aggregate());
+        let mut table = Table::new(self.aggregate(Period::Day));
         table.with(Style::rounded());
 
         let mut builder = Builder::from_iter([[
@@ -142,6 +154,7 @@ impl Display for SolarData {
             kwh_to_string(&self.production()),
             kwh_to_string(&self.consumption()),
             kwh_to_string(&self.purchased()),
+            kwh_to_string(&(self.purchased() - self.purchased_at_rate(&Rate::NightBoost))),
             kwh_to_string(&self.feed_in()),
         ]]);
 
