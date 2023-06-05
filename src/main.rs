@@ -10,5 +10,6 @@ fn main() -> anyhow::Result<()> {
     let data = SolarData::from_folder(&args[1])?;
 
     println!("{}", data);
+
     Ok(())
 }

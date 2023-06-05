@@ -2,15 +2,28 @@
 name = "solar-rs"
 version = "0.1.0"
 edition = "2021"
+description = "Project to analyse PV data pulled from Solarman."
+license = "MIT"
+repository = "https://github.com/evanbrierton/solar-rs"
+readme = "README.md"
+keywords = ["solar", "pv", "solarman"]
+categories = ["science", "command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 anyhow = "1.0.71"
+calamine = "0.19.1"
 chrono = { version = "0.4.24", features = ["serde"] }
+conv = "0.3.3"
 csv = "1.2.1"
 itertools = "0.10.5"
 num-traits = "0.2.15"
 serde = { version = "1.0.163", features = ["derive"] }
 tabled = "0.12.0"
-uom = "0.34.0"
+
+[dev-dependencies]
+serde_json = "1.0.96"
+serde_test = "1.0.163"
+tempfile = "3.5.0"
+xlsxwriter = "0.6.0"

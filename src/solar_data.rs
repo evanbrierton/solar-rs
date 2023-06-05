@@ -1,26 +1,34 @@
-use std::{
-    fmt::{self, Display, Formatter},
-    path::Path,
-};
+use core::fmt::{self, Display, Formatter};
+use std::path::Path;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use itertools::Itertools;
-use tabled::{builder::Builder, settings::Style};
+use tabled::{
+    builder::Builder,
+    settings::{Concat, Style},
+    Table,
+};
 
 use crate::{
-    aggregate_solar_record::AggregateSolarRecord, parse::read_from_file, solar_record::SolarRecord,
-    solarman_record::SolarManRecord,
+    aggregate_solar_record::{AggregateSolarRecord, Period},
+    formatting::{euro_to_string, kwh_to_string},
+    parsers::parse_spreadsheets_from_folder,
+    rate::Rate,
+    solar_record::SolarRecord,
+    solarman_record::SolarmanRecord,
 };
 
-const SETUP_COST: f32 = 11_000.0;
+const SETUP_COST: f64 = 11_000_f64;
 
+#[derive(Debug)]
 pub struct SolarData {
-    pub setup_cost: f32,
+    pub setup_cost: f64,
     records: Vec<SolarRecord>,
 }
 
 impl SolarData {
-    pub fn new(setup_cost: f32, records: Vec<SolarRecord>) -> Self {
+    #[must_use]
+    pub fn new(setup_cost: f64, records: Vec<SolarRecord>) -> Self {
         Self {
             setup_cost,
             records,
@@ -31,96 +39,99 @@ impl SolarData {
         self.records.append(&mut records);
     }
 
-    pub fn aggregate(&self) -> Vec<AggregateSolarRecord> {
+    #[must_use]
+    pub fn aggregate(&self, period: &Period) -> Vec<AggregateSolarRecord> {
+        let groups = self.records.iter().group_by(|r| period.key(&r.date_time));
+
+        let labelled_groups = groups.into_iter().map(|(date, records)| {
+            AggregateSolarRecord::new(&records.copied().collect::<Vec<_>>(), &date)
+        });
+
+        labelled_groups.collect::<Vec<_>>()
+    }
+
+    #[must_use]
+    pub fn cost(&self) -> f64 {
+        self.records.iter().map(SolarRecord::cost).sum()
+    }
+
+    #[must_use]
+    pub fn old_cost(&self) -> f64 {
+        self.records.iter().map(SolarRecord::old_cost).sum()
+    }
+
+    #[must_use]
+    pub fn savings(&self) -> f64 {
+        self.records.iter().map(SolarRecord::savings).sum()
+    }
+
+    #[must_use]
+    pub fn production(&self) -> f64 {
+        self.records.iter().map(SolarRecord::production).sum()
+    }
+
+    #[must_use]
+    pub fn consumption(&self) -> f64 {
+        self.records.iter().map(SolarRecord::consumption).sum()
+    }
+
+    #[must_use]
+    pub fn purchased(&self) -> f64 {
+        self.records.iter().map(SolarRecord::purchased).sum()
+    }
+
+    #[must_use]
+    pub fn purchased_at_rate(&self, rate: &Rate) -> f64 {
         self.records
             .iter()
-            .group_by(|r| r.date_time.date_naive())
-            .into_iter()
-            .map(|(_, records)| AggregateSolarRecord::new(records.collect()))
-            .collect()
+            .filter(|r| r.rate() == *rate)
+            .map(SolarRecord::purchased)
+            .sum()
     }
 
-    pub fn cost(&self) -> f32 {
-        self.records.iter().map(|r| r.cost()).sum()
+    #[must_use]
+    pub fn feed_in(&self) -> f64 {
+        self.records.iter().map(SolarRecord::feed_in).sum()
     }
 
-    pub fn old_cost(&self) -> f32 {
-        self.records.iter().map(|r| r.old_cost()).sum()
+    #[must_use]
+    pub fn mean_savings(&self, period: &Period) -> f64 {
+        self.savings() / self.aggregate(period).len() as f64
     }
 
-    pub fn savings(&self) -> f32 {
-        self.records.iter().map(|r| r.savings()).sum()
-    }
-
-    pub fn production(&self) -> f32 {
-        self.records.iter().map(|r| r.production()).sum()
-    }
-
-    pub fn consumption(&self) -> f32 {
-        self.records.iter().map(|r| r.consumption()).sum()
-    }
-
-    pub fn purchased(&self) -> f32 {
-        self.records.iter().map(|r| r.purchased()).sum()
-    }
-
-    pub fn feed_in(&self) -> f32 {
-        self.records.iter().map(|r| r.feed_in()).sum()
-    }
-
-    pub fn mean_savings(&self) -> f32 {
-        self.savings() / self.aggregate().len() as f32
-    }
-
-    pub fn remaining_setup_cost(&self) -> f32 {
+    #[must_use]
+    pub fn remaining_setup_cost(&self) -> f64 {
         self.setup_cost - self.savings()
     }
 
-    pub fn remaining_days(&self) -> f32 {
-        self.remaining_setup_cost() / self.mean_savings()
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn remaining_days(&self) -> i64 {
+        (self.remaining_setup_cost() / self.mean_savings(&Period::Day)).round() as i64
     }
 
-    pub fn payoff_date(&self) -> DateTime<Utc> {
-        Utc::now() + chrono::Duration::days(self.remaining_days() as i64)
+    #[must_use]
+    pub fn payoff_date(&self) -> NaiveDate {
+        (Utc::now() + chrono::Duration::days(self.remaining_days())).date_naive()
     }
 
+    /// # Errors
+    /// # Panics
     pub fn from_folder<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
-        let directory_elements = std::fs::read_dir(path)?.collect::<Result<Vec<_>, _>>()?;
-
-        let csv_files = directory_elements
-            .into_iter()
-            .filter(|entry| {
-                let is_file = entry.file_type().map(|ft| ft.is_file()).unwrap_or(false);
-                let has_csv_extension = entry
-                    .path()
-                    .extension()
-                    .map(|ext| ext == "csv")
-                    .unwrap_or(false);
-
-                is_file && has_csv_extension
-            })
-            .collect::<Vec<_>>();
-
-        let sorted_raw_records = csv_files
-            .into_iter()
-            .map(|file_entry| read_from_file::<SolarManRecord, _>(file_entry.path()))
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .flatten()
+        let raw_records = parse_spreadsheets_from_folder::<SolarmanRecord, _>(path)?;
+        let sorted_raw_records = raw_records
+            .iter()
             .sorted_by_key(|solarman_record| solarman_record.time)
             .collect::<Vec<_>>();
 
+        let mut start_time: Option<DateTime<Utc>> = None;
+
         let records = sorted_raw_records
             .iter()
-            .enumerate()
-            .map(|(index, record)| {
-                let start_time = if index == 0 {
-                    None
-                } else {
-                    Some(sorted_raw_records[index - 1].time)
-                };
-
-                SolarRecord::new(record, start_time)
+            .map(|raw_record| {
+                let record = SolarRecord::new(raw_record, start_time);
+                start_time = Some(record.date_time);
+                record
             })
             .collect::<Vec<_>>();
 
@@ -130,45 +141,34 @@ impl SolarData {
 
 impl Display for SolarData {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let headers = vec![
-            "Date",
-            "Old Cost",
-            "New Cost",
-            "Savings",
-            "Production",
-            "Consumption",
-            "Purchased",
-            "Feed In",
-        ];
+        let period = Period::Month;
 
-        let mut builder = Builder::default();
-        builder.set_header(headers);
+        let mut table = Table::new(self.aggregate(&period));
+        table.with(Style::rounded());
 
-        for record in self.aggregate() {
-            builder.push_record(record.to_table_row());
-        }
+        let mut builder = Builder::from_iter([[
+            "Total".to_owned(),
+            euro_to_string(&self.old_cost()),
+            euro_to_string(&self.cost()),
+            euro_to_string(&self.savings()),
+            kwh_to_string(&self.production()),
+            kwh_to_string(&self.consumption()),
+            kwh_to_string(&self.purchased()),
+            kwh_to_string(&(self.purchased() - self.purchased_at_rate(&Rate::NightBoost))),
+            kwh_to_string(&self.feed_in()),
+        ]]);
 
-        let total = vec![
-            "Total".to_string(),
-            format!("€{:.2}", self.old_cost()),
-            format!("€{:.2}", self.cost()),
-            format!("€{:.2}", self.savings()),
-            format!("{:.2}kWh", self.production() / 1000.0),
-            format!("{:.2}kWh", self.consumption() / 1000.0),
-            format!("{:.2}kWh", self.purchased() / 1000.0),
-            format!("{:.2}kWh", self.feed_in() / 1000.0),
-        ];
+        builder.remove_header();
+        let total = builder.build();
 
-        builder.push_record(total);
-
-        let table = builder.build().with(Style::rounded()).to_string();
+        table.with(Concat::vertical(total));
 
         let output = format!(
-            "{}\n{}\n{}\n{}\n",
+            "{}\nMean Savings: €{:.2}\nRemaining Balance: €{:.2}\nExpected Payoff Date: {:.2}\n",
             table,
-            self.mean_savings(),
+            self.mean_savings(&period),
             self.remaining_setup_cost(),
-            self.payoff_date().to_rfc2822()
+            self.payoff_date()
         );
 
         write!(f, "{}", output)
