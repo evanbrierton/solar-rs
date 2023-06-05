@@ -1,7 +1,7 @@
 use core::fmt::{self, Display, Formatter};
 use std::path::Path;
 
-use chrono::{DateTime, Datelike, NaiveDate, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use itertools::Itertools;
 use tabled::{
     builder::Builder,
@@ -40,13 +40,11 @@ impl SolarData {
     }
 
     #[must_use]
-    pub fn aggregate(&self, period: Period) -> Vec<AggregateSolarRecord> {
-        let groups = self.records.iter().group_by(|r| r.date_time);
+    pub fn aggregate(&self, period: &Period) -> Vec<AggregateSolarRecord> {
+        let groups = self.records.iter().group_by(|r| period.key(&r.date_time));
 
         let labelled_groups = groups.into_iter().map(|(date, records)| {
-            let key = period.key(&date);
-
-            AggregateSolarRecord::new(&records.copied().collect::<Vec<_>>(), &key)
+            AggregateSolarRecord::new(&records.copied().collect::<Vec<_>>(), &date)
         });
 
         labelled_groups.collect::<Vec<_>>()
@@ -97,8 +95,8 @@ impl SolarData {
     }
 
     #[must_use]
-    pub fn mean_savings(&self) -> f64 {
-        self.savings() / self.aggregate(Period::Day).len() as f64
+    pub fn mean_savings(&self, period: &Period) -> f64 {
+        self.savings() / self.aggregate(period).len() as f64
     }
 
     #[must_use]
@@ -109,7 +107,7 @@ impl SolarData {
     #[must_use]
     #[allow(clippy::cast_possible_truncation)]
     pub fn remaining_days(&self) -> i64 {
-        (self.remaining_setup_cost() / self.mean_savings()).round() as i64
+        (self.remaining_setup_cost() / self.mean_savings(&Period::Day)).round() as i64
     }
 
     #[must_use]
@@ -143,7 +141,9 @@ impl SolarData {
 
 impl Display for SolarData {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let mut table = Table::new(self.aggregate(Period::Day));
+        let period = Period::Month;
+
+        let mut table = Table::new(self.aggregate(&period));
         table.with(Style::rounded());
 
         let mut builder = Builder::from_iter([[
@@ -164,9 +164,9 @@ impl Display for SolarData {
         table.with(Concat::vertical(total));
 
         let output = format!(
-            "{}\n{}\n{}\n{}\n",
+            "{}\nMean Savings: €{:.2}\nRemaining Balance: €{:.2}\nExpected Payoff Date: {:.2}\n",
             table,
-            self.mean_savings(),
+            self.mean_savings(&period),
             self.remaining_setup_cost(),
             self.payoff_date()
         );
