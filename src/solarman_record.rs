@@ -4,7 +4,7 @@ use serde::{Deserialize, Deserializer};
 
 /// A record of solar power production and consumption
 #[derive(Debug, Deserialize, PartialEq, Eq)]
-pub struct SolarmanRecord {
+pub(crate) struct SolarmanRecord {
     /// The time at which the record was updated.
     #[serde(rename = "Updated Time", deserialize_with = "deserialize_date")]
     pub time: DateTime<Utc>,
@@ -13,7 +13,7 @@ pub struct SolarmanRecord {
         rename = "Production Power(W)",
         deserialize_with = "deserialize_decimal"
     )]
-    pub production: u16,
+    pub production: u32,
     /// The amount of power being consumed, in watts.
     #[serde(
         rename = "Consumption Power(W)",
@@ -48,20 +48,21 @@ where
     T: Num + TryFrom<i32>,
     D: Deserializer<'de>,
 {
-    let f = f64::deserialize(deserializer).map_err(serde::de::Error::custom)?;
+    let s = String::deserialize(deserializer).map_err(serde::de::Error::custom)?;
+
+    if s.is_empty() {
+        return Ok(T::zero());
+    }
+
+    let f: f64 = s.parse().map_err(serde::de::Error::custom)?;
 
     let i: i32 = match NumCast::from(f) {
         Some(x) => x,
         None => return Err(serde::de::Error::custom("Failed to convert to i32")),
     };
 
-    let d = match T::try_from(i) {
-        Ok(d) => d,
-        Err(_) => {
-            return Err(serde::de::Error::custom(
-                "Failed to convert to integer type",
-            ))
-        }
+    let Ok(d) = T::try_from(i) else {
+        return Err(serde::de::Error::custom("Failed to convert to integer type"));
     };
 
     Ok(d)

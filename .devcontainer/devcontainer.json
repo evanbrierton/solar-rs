@@ -14,8 +14,8 @@
 		},
 		{
 			"source": "${localWorkspaceFolder}/data",
-			"target": "/workspaces/solar-rs/data",
-			"type": "volume"
+			"target": "${containerWorkspaceFolder}/data",
+			"type": "bind"
 		}
 	]
 

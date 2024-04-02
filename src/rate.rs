@@ -4,7 +4,7 @@ use chrono::{DateTime, Timelike, Utc};
 
 #[derive(Debug, PartialEq, Eq)]
 
-pub enum Rate {
+pub(crate) enum Rate {
     Day,
     Night,
     NightBoost,
@@ -13,12 +13,12 @@ pub enum Rate {
 
 impl Rate {
     fn value(&self) -> f64 {
-        match *self {
-            Rate::Day => 0.000_438_6_f64,
-            Rate::Night => 0.000_215_5_f64,
-            Rate::NightBoost => 0.000_126_5_f64,
-            Rate::FeedIn => 0.00021_f64,
-        }
+        (match *self {
+            Rate::Day => 0.4008_f64,
+            Rate::Night => 0.2092_f64,
+            Rate::NightBoost => 0.1228_f64,
+            Rate::FeedIn => 0.21_f64,
+        } / 1000_f64)
     }
 
     #[must_use]
@@ -40,6 +40,7 @@ impl From<DateTime<Utc>> for Rate {
 }
 
 impl From<Rate> for f64 {
+    #[inline]
     fn from(rate: Rate) -> Self {
         rate.value()
     }

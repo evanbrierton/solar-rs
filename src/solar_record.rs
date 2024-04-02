@@ -1,37 +1,39 @@
-use core::num::TryFromIntError;
-
 use chrono::{DateTime, Duration, Utc};
 
 use crate::{rate::Rate, solarman_record::SolarmanRecord};
 
 #[derive(Debug, Clone, Copy)]
-pub struct SolarRecord {
-    pub date_time: DateTime<Utc>,
+pub(crate) struct SolarRecord {
+    date_time: DateTime<Utc>,
     duration: Duration,
-    production: u16,
+    production: u32,
     consumption: u32,
+    battery: i32,
     grid: i32,
 }
 
 impl SolarRecord {
     #[must_use]
-    pub fn new(record: &SolarmanRecord, start_time: Option<DateTime<Utc>>) -> Self {
-        let duration = match start_time {
-            Some(t) => record.time - t,
-            None => Duration::minutes(5),
-        };
-
+    pub fn new(
+        date_time: DateTime<Utc>,
+        duration: Duration,
+        production: u32,
+        consumption: u32,
+        battery: i32,
+        grid: i32,
+    ) -> Self {
         Self {
-            date_time: record.time,
+            date_time,
             duration,
-            production: record.production,
-            consumption: record.consumption,
-            grid: record.grid,
+            production,
+            consumption,
+            battery,
+            grid,
         }
     }
 
     #[must_use]
-    pub fn rate(&self) -> Rate {
+    fn rate(&self) -> Rate {
         if self.grid > 0_i32 {
             return Rate::FeedIn;
         }
@@ -45,31 +47,24 @@ impl SolarRecord {
     }
 
     #[must_use]
-    pub fn savings(&self) -> f64 {
-        self.old_cost() - self.cost()
+    pub fn date_time(&self) -> DateTime<Utc> {
+        self.date_time
+    }
+
+    #[must_use]
+    pub fn duration(&self) -> Duration {
+        self.duration
+    }
+
+    #[must_use]
+    pub fn old_cost(&self) -> f64 {
+        let consumption = i32::try_from(self.consumption).unwrap_or(i32::MAX);
+        self.old_rate().cost(consumption) * (self.duration.num_minutes() as f64 / 60_f64)
     }
 
     #[must_use]
     pub fn cost(&self) -> f64 {
         self.rate().cost(-self.grid) * (self.duration.num_minutes() as f64 / 60_f64)
-    }
-
-    #[must_use]
-    pub fn old_cost(&self) -> f64 {
-        let consumption = match i32::try_from(self.consumption) {
-            Ok(i) => i,
-            Err(TryFromIntError { .. }) => {
-                eprintln!(
-                    "Consumption value too large: {} substituting {} (at record {})",
-                    self.consumption,
-                    i32::MAX,
-                    self.date_time
-                );
-                i32::MAX
-            }
-        };
-
-        self.old_rate().cost(consumption) * (self.duration.num_minutes() as f64 / 60_f64)
     }
 
     #[must_use]
@@ -80,6 +75,14 @@ impl SolarRecord {
     #[must_use]
     pub fn consumption(&self) -> f64 {
         f64::from(self.consumption) * (self.duration.num_minutes() as f64 / 60_f64)
+    }
+
+    pub fn grid(&self) -> f64 {
+        f64::from(self.grid) * (self.duration.num_minutes() as f64 / 60_f64)
+    }
+
+    pub fn battery(&self) -> f64 {
+        f64::from(self.battery) * (self.duration.num_minutes() as f64 / 60_f64)
     }
 
     #[must_use]
@@ -99,6 +102,45 @@ impl SolarRecord {
             0_f64
         }
     }
+
+    #[must_use]
+    pub fn purchased_without_boost(&self) -> f64 {
+        if self.rate() == Rate::NightBoost {
+            0_f64
+        } else {
+            self.purchased()
+        }
+    }
+
+    pub fn from_solarman_record(
+        record: &SolarmanRecord,
+        start_time: Option<DateTime<Utc>>,
+    ) -> Self {
+        let duration = match start_time {
+            Some(t) => record.time - t,
+            None => Duration::minutes(5),
+        };
+
+        Self::new(
+            record.time,
+            duration,
+            record.production,
+            record.consumption,
+            record.battery,
+            record.grid,
+        )
+    }
+
+    pub fn with_grid_and_battery(&self, grid: i32, battery: i32) -> Self {
+        Self::new(
+            self.date_time,
+            self.duration,
+            self.production,
+            self.consumption,
+            battery,
+            grid,
+        )
+    }
 }
 
 #[cfg(test)]
@@ -117,13 +159,14 @@ mod tests {
             time: Utc::now(),
             production: 100,
             consumption: 50,
+            battery: 0,
             grid: 0,
             battery: 0,
             soc: 0,
         };
 
         let start_time = Some(record.time - Duration::minutes(5));
-        let solar_record = SolarRecord::new(&record, start_time);
+        let solar_record = SolarRecord::from_solarman_record(&record, start_time);
 
         ensure!(
             solar_record.production == 100,
@@ -178,6 +221,7 @@ mod tests {
             duration: Duration::minutes(60),
             production: 100,
             consumption: 50,
+            battery: 0,
             grid: 25,
         };
 
@@ -201,6 +245,7 @@ mod tests {
             duration: Duration::minutes(60),
             production: 100,
             consumption: 50,
+            battery: 0,
             grid: 25,
         };
 
@@ -224,6 +269,7 @@ mod tests {
             duration: Duration::minutes(60),
             production: 100,
             consumption: 50,
+            battery: 0,
             grid: 25,
         };
 
@@ -247,6 +293,7 @@ mod tests {
             duration: Duration::minutes(60),
             production: 100,
             consumption: 50,
+            battery: 0,
             grid: -25,
         };
 
@@ -269,6 +316,7 @@ mod tests {
             duration: Duration::minutes(60),
             production: 100,
             consumption: 50,
+            battery: 0,
             grid: -25,
         };
 
@@ -287,6 +335,7 @@ mod tests {
             duration: Duration::minutes(60),
             production: 100,
             consumption: 50,
+            battery: 0,
             grid: -25,
         };
 
@@ -308,6 +357,7 @@ mod tests {
             duration: Duration::minutes(60),
             production: 100,
             consumption: 50,
+            battery: 0,
             grid: -25,
         };
 
@@ -329,6 +379,7 @@ mod tests {
             duration: Duration::minutes(60),
             production: 100,
             consumption: 50,
+            battery: 0,
             grid: -25,
         };
 
@@ -350,6 +401,7 @@ mod tests {
             duration: Duration::minutes(60),
             production: 100,
             consumption: 50,
+            battery: 0,
             grid: 25,
         };
 

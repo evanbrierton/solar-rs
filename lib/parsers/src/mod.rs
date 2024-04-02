@@ -1,11 +1,9 @@
 use std::{ffi::OsStr, path::Path};
 
-pub mod csv;
-pub mod excel;
+pub(crate) mod csv;
+pub(crate) mod excel;
 
-/// # Errors
-/// # Panics
-pub fn parse_spreadsheets_from_folder<T, P>(path: P) -> anyhow::Result<Vec<T>>
+pub(crate) fn parse_spreadsheets_from_folder<T, P>(path: P) -> anyhow::Result<Vec<T>>
 where
     P: AsRef<Path>,
     T: for<'de> serde::Deserialize<'de>,

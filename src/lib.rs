@@ -1,25 +1,23 @@
 #![warn(clippy::pedantic, clippy::cargo, clippy::restriction)]
-#![allow(clippy::cast_precision_loss)]
 #![allow(
-    clippy::missing_docs_in_private_items,
-    clippy::missing_inline_in_public_items,
+    clippy::separated_literal_suffix,
     clippy::implicit_return,
     clippy::mod_module_files,
-    clippy::float_arithmetic,
-    clippy::exhaustive_enums,
-    clippy::exhaustive_structs,
-    clippy::separated_literal_suffix
+    clippy::std_instead_of_alloc
 )]
 #![allow(
+    clippy::missing_docs_in_private_items,
+    clippy::question_mark_used,
     clippy::blanket_clippy_restriction_lints,
-    clippy::non_ascii_literal,
-    clippy::as_conversions,
-    clippy::arithmetic_side_effects
+    clippy::float_arithmetic,
+    clippy::arithmetic_side_effects,
+    clippy::cast_precision_loss,
+    clippy::as_conversions
 )]
 
 pub mod aggregate_solar_record;
 pub mod formatting;
-pub mod parsers;
+pub mod period;
 pub mod rate;
 pub mod solar_data;
 pub mod solar_record;
