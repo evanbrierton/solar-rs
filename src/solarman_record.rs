@@ -62,7 +62,9 @@ where
     };
 
     let Ok(d) = T::try_from(i) else {
-        return Err(serde::de::Error::custom("Failed to convert to integer type"));
+        return Err(serde::de::Error::custom(
+            "Failed to convert to integer type",
+        ));
     };
 
     Ok(d)
@@ -136,15 +138,15 @@ mod tests {
             Token::Str("Updated Time"),
             Token::Str("2023/05/24 01:35"),
             Token::Str("Production Power(W)"),
-            Token::F64(123.00),
+            Token::Str("123.00"),
             Token::Str("Consumption Power(W)"),
-            Token::F64(456.00),
+            Token::Str("456.00"),
             Token::Str("Grid Power(W)"),
-            Token::F64(-789.00),
+            Token::Str("-789.00"),
             Token::Str("Battery Power(W)"),
-            Token::F64(1011.00),
+            Token::Str("1011.00"),
             Token::Str("SoC(%)"),
-            Token::F64(12.00),
+            Token::Str("12.00"),
             Token::StructEnd,
         ];
 

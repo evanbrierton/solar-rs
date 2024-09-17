@@ -19,12 +19,15 @@ struct Args {
 
     #[arg(short, long, default_value = "11000")]
     cost: f64,
+
+    #[arg(short, long, default_value = "12")]
+    limit: usize,
 }
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let output = args.output_positional.or(args.output_flag);
 
-    let data = SolarData::from_folder(args.path, args.period, args.cost)?;
+    let data = SolarData::from_folder(args.path, args.period, args.cost, args.limit)?;
 
     if let Some(output) = output {
         data.write(output)?;

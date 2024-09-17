@@ -24,6 +24,7 @@ pub struct SolarData {
     setup_cost: f64,
     records: Vec<SolarRecord>,
     aggregation_period: Period,
+    limit: usize,
 }
 
 macro_rules! metrics {
@@ -43,11 +44,13 @@ impl SolarData {
         setup_cost: f64,
         records: Vec<SolarRecord>,
         aggregation_period: Period,
+        limit: usize,
     ) -> Self {
         Self {
             setup_cost,
             records,
             aggregation_period,
+            limit,
         }
     }
 
@@ -106,6 +109,7 @@ impl SolarData {
         path: P,
         aggregation_period: Period,
         setup_cost: f64,
+        limit: usize,
     ) -> anyhow::Result<Self> {
         let raw_records = parse_spreadsheets_from_folder::<SolarmanRecord, _>(path)?;
         let sorted_raw_records = raw_records
@@ -124,7 +128,7 @@ impl SolarData {
             })
             .collect::<Vec<_>>();
 
-        Ok(Self::new(setup_cost, records, aggregation_period))
+        Ok(Self::new(setup_cost, records, aggregation_period, limit))
     }
 
     #[inline]
@@ -224,6 +228,7 @@ impl SolarData {
             self.setup_cost + battery_cost,
             records,
             self.aggregation_period,
+            self.limit,
         )
     }
 
@@ -251,9 +256,6 @@ impl Display for SolarData {
         let period = self.aggregation_period;
 
         let aggregate_records = self.aggregate(period);
-
-        let mut table = Table::new(aggregate_records);
-        table.with(Style::rounded());
 
         let mut total_builder = Builder::from_iter([[
             "Total".to_owned(),
@@ -286,6 +288,9 @@ impl Display for SolarData {
 
         mean_builder.remove_header();
         let mean = mean_builder.build();
+
+        let mut table = Table::new(aggregate_records.iter().rev().take(self.limit).rev());
+        table.with(Style::rounded());
 
         table.with(Concat::vertical(mean));
         table.with(Concat::vertical(total));

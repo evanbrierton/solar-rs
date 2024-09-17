@@ -59,12 +59,13 @@ impl SolarRecord {
     #[must_use]
     pub fn old_cost(&self) -> f64 {
         let consumption = i32::try_from(self.consumption).unwrap_or(i32::MAX);
-        self.old_rate().cost(consumption) * (self.duration.num_minutes() as f64 / 60_f64)
+        self.old_rate().cost(consumption, self.date_time)
+            * (self.duration.num_minutes() as f64 / 60_f64)
     }
 
     #[must_use]
     pub fn cost(&self) -> f64 {
-        self.rate().cost(-self.grid) * (self.duration.num_minutes() as f64 / 60_f64)
+        self.rate().cost(-self.grid, self.date_time) * (self.duration.num_minutes() as f64 / 60_f64)
     }
 
     #[must_use]
