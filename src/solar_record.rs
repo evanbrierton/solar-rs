@@ -8,7 +8,6 @@ pub(crate) struct SolarRecord {
     duration: Duration,
     production: u32,
     consumption: u32,
-    battery: i32,
     grid: i32,
 }
 
@@ -19,7 +18,6 @@ impl SolarRecord {
         duration: Duration,
         production: u32,
         consumption: u32,
-        battery: i32,
         grid: i32,
     ) -> Self {
         Self {
@@ -27,7 +25,6 @@ impl SolarRecord {
             duration,
             production,
             consumption,
-            battery,
             grid,
         }
     }
@@ -78,14 +75,6 @@ impl SolarRecord {
         f64::from(self.consumption) * (self.duration.num_minutes() as f64 / 60_f64)
     }
 
-    pub fn grid(&self) -> f64 {
-        f64::from(self.grid) * (self.duration.num_minutes() as f64 / 60_f64)
-    }
-
-    pub fn battery(&self) -> f64 {
-        f64::from(self.battery) * (self.duration.num_minutes() as f64 / 60_f64)
-    }
-
     #[must_use]
     pub fn purchased(&self) -> f64 {
         if self.grid < 0_i32 {
@@ -127,19 +116,7 @@ impl SolarRecord {
             duration,
             record.production,
             record.consumption,
-            record.battery,
             record.grid,
-        )
-    }
-
-    pub fn with_grid_and_battery(&self, grid: i32, battery: i32) -> Self {
-        Self::new(
-            self.date_time,
-            self.duration,
-            self.production,
-            self.consumption,
-            battery,
-            grid,
         )
     }
 }

@@ -3,7 +3,7 @@ use std::path::Path;
 
 use parsers::{csv, parse_spreadsheets_from_folder};
 
-use chrono::{DateTime, NaiveDate, Timelike, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use itertools::Itertools;
 use tabled::{
     builder::Builder,
