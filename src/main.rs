@@ -23,6 +23,7 @@ struct Args {
     #[arg(short, long, default_value = "12")]
     limit: usize,
 }
+
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let output = args.output_positional.or(args.output_flag);
