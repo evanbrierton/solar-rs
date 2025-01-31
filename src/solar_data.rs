@@ -72,7 +72,6 @@ impl SolarData {
         production,
         consumption,
         purchased,
-        purchased_without_boost,
         feed_in
     }
 
@@ -147,7 +146,6 @@ impl Display for SolarData {
             watt_hour_to_string(&self.production()),
             watt_hour_to_string(&self.consumption()),
             watt_hour_to_string(&self.purchased()),
-            watt_hour_to_string(&self.purchased_without_boost()),
             watt_hour_to_string(&self.feed_in()),
         ]]);
 
@@ -162,9 +160,6 @@ impl Display for SolarData {
             watt_hour_to_string(&(self.production() / self.aggregate(period).len() as f64)),
             watt_hour_to_string(&(self.consumption() / self.aggregate(period).len() as f64)),
             watt_hour_to_string(&(self.purchased() / self.aggregate(period).len() as f64)),
-            watt_hour_to_string(
-                &(self.purchased_without_boost() / self.aggregate(period).len() as f64),
-            ),
             watt_hour_to_string(&(self.feed_in() / self.aggregate(period).len() as f64)),
         ]]);
 

@@ -1,6 +1,6 @@
 use chrono::{DateTime, Duration, Utc};
 
-use crate::{rate::Rate, solarman_record::SolarmanRecord};
+use crate::{rate_version::Rate, solarman_record::SolarmanRecord};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SolarRecord {
@@ -31,15 +31,6 @@ impl SolarRecord {
 
     #[must_use]
     fn rate(&self) -> Rate {
-        if self.grid > 0_i32 {
-            return Rate::FeedIn;
-        }
-
-        self.date_time.into()
-    }
-
-    #[must_use]
-    pub fn old_rate(&self) -> Rate {
         self.date_time.into()
     }
 
@@ -49,20 +40,22 @@ impl SolarRecord {
     }
 
     #[must_use]
-    pub fn duration(&self) -> Duration {
-        self.duration
+    pub fn standing_charge(&self) -> f64 {
+        self.rate().standing_charge() * (self.duration.num_minutes() as f64 / 1440_f64)
     }
 
     #[must_use]
     pub fn old_cost(&self) -> f64 {
         let consumption = i32::try_from(self.consumption).unwrap_or(i32::MAX);
-        self.old_rate().cost(consumption, self.date_time)
+        self.rate().cost(consumption, self.date_time)
             * (self.duration.num_minutes() as f64 / 60_f64)
+            + self.standing_charge()
     }
 
     #[must_use]
     pub fn cost(&self) -> f64 {
         self.rate().cost(-self.grid, self.date_time) * (self.duration.num_minutes() as f64 / 60_f64)
+            + self.standing_charge()
     }
 
     #[must_use]
@@ -90,15 +83,6 @@ impl SolarRecord {
             f64::from(self.grid) * (self.duration.num_minutes() as f64 / 60_f64)
         } else {
             0_f64
-        }
-    }
-
-    #[must_use]
-    pub fn purchased_without_boost(&self) -> f64 {
-        if self.rate() == Rate::NightBoost {
-            0_f64
-        } else {
-            self.purchased()
         }
     }
 

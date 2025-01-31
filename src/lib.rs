@@ -18,7 +18,6 @@
 pub mod aggregate_solar_record;
 pub mod formatting;
 pub mod period;
-pub mod rate;
 pub mod rate_version;
 pub mod solar_data;
 pub mod solar_record;

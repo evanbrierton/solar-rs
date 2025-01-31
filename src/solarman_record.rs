@@ -82,11 +82,15 @@ fn deserialize_date<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    const FORMAT: &str = "%Y/%m/%d %H:%M";
+    let formats = ["%Y/%m/%d %H:%M:%S", "%Y/%m/%d %H:%M"];
+
     let s = String::deserialize(deserializer)?;
 
-    Utc.datetime_from_str(&s, FORMAT)
-        .map_err(serde::de::Error::custom)
+    let datetime = formats
+        .iter()
+        .find_map(|f| Utc.datetime_from_str(&s, f).ok());
+
+    datetime.ok_or(serde::de::Error::custom("Failed to parse date and time"))
 }
 
 #[cfg(test)]

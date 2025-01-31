@@ -1,4 +1,3 @@
-use chrono::Duration;
 use serde::Serialize;
 use tabled::Tabled;
 
@@ -21,8 +20,6 @@ pub(crate) struct AggregateSolarRecord {
     consumption: f64,
     #[tabled(rename = "Purchased", display_with = "watt_hour_to_string")]
     purchased: f64,
-    #[tabled(rename = "Purchased w/o Boost", display_with = "watt_hour_to_string")]
-    purchased_without_boost: f64,
     #[tabled(rename = "Feed In", display_with = "watt_hour_to_string")]
     feed_in: f64,
 }
@@ -39,44 +36,10 @@ macro_rules! getters {
 }
 
 impl AggregateSolarRecord {
-    const VAT: f64 = 0.09_f64;
-    const DAILY_STANDING_CHARGE: f64 = 0.9976_f64;
-
     #[must_use]
     pub fn new(records: &[SolarRecord], key: &str) -> Self {
-        let microgen_credit = records
-            .iter()
-            .map(SolarRecord::cost)
-            .filter(|cost| cost < &0.0_f64)
-            .sum::<f64>();
-
-        let duration = records
-            .iter()
-            .map(SolarRecord::duration)
-            .reduce(|acc, duration| acc + duration)
-            .unwrap();
-
-        let standing_charge = Self::standing_charge(duration);
-
-        // println!(
-        //     "Duration - Standing charge: {} - {}",
-        //     duration.num_days(),
-        //     standing_charge
-        // );
-
-        let raw_cost = records
-            .iter()
-            .map(SolarRecord::cost)
-            .filter(|cost| cost >= &0.0_f64)
-            .sum::<f64>();
-
-        // println!("Raw cost: {}", raw_cost);
-
-        let cost = Self::apply_vat(raw_cost + standing_charge) + microgen_credit;
-
-        let old_cost = Self::apply_vat(
-            records.iter().map(SolarRecord::old_cost).sum::<f64>() + standing_charge,
-        );
+        let cost = records.iter().map(SolarRecord::cost).sum::<f64>();
+        let old_cost = records.iter().map(SolarRecord::old_cost).sum::<f64>();
 
         let savings = old_cost - cost;
 
@@ -94,14 +57,7 @@ impl AggregateSolarRecord {
             }
         }
 
-        construct!(
-            records,
-            production,
-            consumption,
-            purchased,
-            purchased_without_boost,
-            feed_in
-        );
+        construct!(records, production, consumption, purchased, feed_in);
     }
 
     getters!(
@@ -111,15 +67,6 @@ impl AggregateSolarRecord {
         production,
         consumption,
         purchased,
-        purchased_without_boost,
         feed_in
     );
-
-    fn apply_vat(cost: f64) -> f64 {
-        cost * (1.0_f64 + Self::VAT)
-    }
-
-    fn standing_charge(duration: Duration) -> f64 {
-        Self::DAILY_STANDING_CHARGE * (duration.num_days() as f64)
-    }
 }
