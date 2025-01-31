@@ -1,6 +1,6 @@
 use chrono::{DateTime, Duration, Utc};
 
-use crate::{rate_version::Rate, solarman_record::SolarmanRecord};
+use crate::{rate::Rate, solarman_record::SolarmanRecord};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SolarRecord {
